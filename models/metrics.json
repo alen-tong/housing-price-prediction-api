@@ -1,0 +1,87 @@
+{
+  "model_type": "Ridge",
+  "target_column": "price",
+  "feature_columns": [
+    "square_footage",
+    "bedrooms",
+    "bathrooms",
+    "year_built",
+    "lot_size",
+    "distance_to_city_center",
+    "school_rating"
+  ],
+  "transformed_feature_names": [
+    "square_footage",
+    "bedrooms",
+    "bathrooms",
+    "year_built",
+    "lot_size",
+    "distance_to_city_center",
+    "school_rating"
+  ],
+  "coefficient_scale": "standardized_numeric_features",
+  "coefficients": [
+    {
+      "feature": "square_footage",
+      "coefficient": 759.273741
+    },
+    {
+      "feature": "bedrooms",
+      "coefficient": 5463.859978
+    },
+    {
+      "feature": "bathrooms",
+      "coefficient": 11368.379194
+    },
+    {
+      "feature": "year_built",
+      "coefficient": -1101.945996
+    },
+    {
+      "feature": "lot_size",
+      "coefficient": 22813.990284
+    },
+    {
+      "feature": "distance_to_city_center",
+      "coefficient": 25937.054543
+    },
+    {
+      "feature": "school_rating",
+      "coefficient": 14373.253851
+    }
+  ],
+  "intercept": 270375.0,
+  "metrics": {
+    "train": {
+      "mae": 7911.8108,
+      "rmse": 9423.1403,
+      "r2": 0.985995
+    },
+    "test": {
+      "mae": 8629.0417,
+      "rmse": 8948.6899,
+      "r2": 0.985688
+    }
+  },
+  "row_counts": {
+    "total": 50,
+    "train": 40,
+    "test": 10
+  },
+  "training_timestamp": "2026-09-08T11:10:13.115184+00:00",
+  "model_version": "2026-09-08T11:10:13.115184+00:00",
+  "dataset": {
+    "path": "/Users/wenhao/Documents/cursor/housing-price-prediction-api/data/housing.csv",
+    "rows": 50,
+    "columns": [
+      "square_footage",
+      "bedrooms",
+      "bathrooms",
+      "year_built",
+      "lot_size",
+      "distance_to_city_center",
+      "school_rating",
+      "price"
+    ]
+  }
+}
