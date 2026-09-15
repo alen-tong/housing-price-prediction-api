@@ -9,6 +9,8 @@ A compact FastAPI service that trains a Scikit-learn regression model and serves
 - Single-property and batch predictions through the same `/predict` endpoint.
 - Model metrics and coefficients exposed for interview discussion.
 
+For the system design and data flow, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ## Dataset
 
 The original Excel assignment file contains two sheets:
