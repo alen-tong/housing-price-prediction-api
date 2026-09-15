@@ -3,11 +3,6 @@ import { Card } from "@/components/ui/Card";
 
 const services = [
   {
-    title: "ML Model API",
-    body: "Reusable FastAPI service that exposes housing price predictions and model metadata.",
-    href: "http://localhost:8000/docs",
-  },
-  {
     title: "Property Value Estimator",
     body: "Python-backed transactional app for submitting estimates and reviewing history.",
     href: "/estimator",
@@ -36,7 +31,7 @@ export default function HomePage() {
         </p>
       </section>
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2">
         {services.map((service) => (
           <Card key={service.title} title={service.title}>
             <p className="min-h-20 text-sm leading-6 text-slate-600">{service.body}</p>

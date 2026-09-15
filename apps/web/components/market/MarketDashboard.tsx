@@ -1,5 +1,6 @@
 "use client";
 
+import { type FormEvent, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { marketExportUrl } from "@/lib/api";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -21,8 +22,11 @@ const featureDefaults: HousingFeatures = {
 
 export function MarketDashboard({ initialSummary }: { initialSummary: MarketSummary | null }) {
   const market = useMarket();
+  const [whatIfValues, setWhatIfValues] = useState<Record<string, string | number>>(featureDefaults);
 
-  function submitWhatIf(formData: FormData) {
+  function submitWhatIf(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     market.submitWhatIf({
       square_footage: Number(formData.get("square_footage")),
       bedrooms: Number(formData.get("bedrooms")),
@@ -32,6 +36,10 @@ export function MarketDashboard({ initialSummary }: { initialSummary: MarketSumm
       distance_to_city_center: Number(formData.get("distance_to_city_center")),
       school_rating: Number(formData.get("school_rating")),
     });
+  }
+
+  function updateWhatIfField(name: string, value: string) {
+    setWhatIfValues((current) => ({ ...current, [name]: value }));
   }
 
   return (
@@ -71,7 +79,14 @@ export function MarketDashboard({ initialSummary }: { initialSummary: MarketSumm
               <BarChart data={market.segments}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="segment" />
-                <YAxis />
+                <YAxis
+                  domain={[
+                    (dataMin: number) => Math.max(0, Math.floor(dataMin * 0.95)),
+                    (dataMax: number) => Math.ceil(dataMax * 1.05),
+                  ]}
+                  tickFormatter={(value) => formatCurrency(Number(value))}
+                  width={90}
+                />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="averagePrice" fill="#2563eb" radius={[8, 8, 0, 0]} />
               </BarChart>
@@ -80,7 +95,7 @@ export function MarketDashboard({ initialSummary }: { initialSummary: MarketSumm
         </Card>
 
         <Card title="What-if Analysis" description="Send a hypothetical property through the Java backend to the ML model.">
-          <form action={submitWhatIf} className="space-y-4">
+          <form onSubmit={submitWhatIf} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               {Object.entries(featureDefaults).map(([key, value]) => (
                 <Field
@@ -89,7 +104,8 @@ export function MarketDashboard({ initialSummary }: { initialSummary: MarketSumm
                   label={labelFor(key)}
                   type="number"
                   step={key === "bedrooms" || key === "year_built" ? "1" : "0.1"}
-                  defaultValue={value}
+                  value={whatIfValues[key] ?? value}
+                  onChange={(event) => updateWhatIfField(key, event.target.value)}
                   required
                 />
               ))}

@@ -1,7 +1,8 @@
 "use client";
 
+import { type FormEvent, useState } from "react";
 import Link from "next/link";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useEstimator } from "@/hooks/useEstimator";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { EstimateRecord } from "@/lib/types";
@@ -32,21 +33,35 @@ const defaultValues = {
 
 export function EstimatorClient({ initialHistory }: { initialHistory: EstimateRecord[] }) {
   const { history, latest, errors, isLoading, apiError, submit } = useEstimator(initialHistory);
+  const [formValues, setFormValues] = useState<Record<string, string | number>>(defaultValues);
 
-  function onSubmit(formData: FormData) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
     submit(Object.fromEntries(formData.entries()));
   }
 
+  function updateField(name: string, value: string) {
+    setFormValues((current) => ({ ...current, [name]: value }));
+  }
+
   const chartData = history.slice(0, 6).reverse().map((item) => ({
+    id: item.id,
     name: item.label || `#${item.id}`,
     price: item.predicted_price,
+    isLatest: latest ? item.id === latest.id : item.id === history[0]?.id,
   }));
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
       <Card title="Estimate a Property" description="Enter all model features and submit them to the Python backend.">
-        <form action={onSubmit} className="space-y-4">
-          <Field name="label" label="Label" defaultValue={defaultValues.label} />
+        <form onSubmit={onSubmit} className="space-y-4">
+          <Field
+            name="label"
+            label="Label"
+            value={formValues.label}
+            onChange={(event) => updateField("label", event.target.value)}
+          />
           <div className="grid gap-4 md:grid-cols-2">
             {fields.map(([name, label]) => (
               <Field
@@ -55,7 +70,8 @@ export function EstimatorClient({ initialHistory }: { initialHistory: EstimateRe
                 label={label}
                 type="number"
                 step={name === "bedrooms" || name === "year_built" ? "1" : "0.1"}
-                defaultValue={defaultValues[name]}
+                value={formValues[name]}
+                onChange={(event) => updateField(name, event.target.value)}
                 error={errors[name]}
                 required
               />
@@ -87,9 +103,20 @@ export function EstimatorClient({ initialHistory }: { initialHistory: EstimateRe
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
+                  <YAxis
+                    domain={[
+                      (dataMin: number) => Math.max(0, Math.floor(dataMin * 0.95)),
+                      (dataMax: number) => Math.ceil(dataMax * 1.05),
+                    ]}
+                    tickFormatter={(value) => formatCurrency(Number(value))}
+                    width={90}
+                  />
                   <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="price" fill="#2563eb" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="price" radius={[8, 8, 0, 0]}>
+                    {chartData.map((entry) => (
+                      <Cell key={entry.id} fill={entry.isLatest ? "#f97316" : "#2563eb"} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -126,7 +153,10 @@ export function EstimatorClient({ initialHistory }: { initialHistory: EstimateRe
             </thead>
             <tbody>
               {history.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100">
+                <tr
+                  key={item.id}
+                  className={`border-t border-slate-100 ${item.id === (latest?.id ?? history[0]?.id) ? "bg-orange-50" : ""}`}
+                >
                   <td className="px-3 py-3">
                     <input
                       type="checkbox"

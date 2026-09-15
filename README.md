@@ -44,14 +44,14 @@ cd services/estimator-api
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-ML_API_URL=http://localhost:8000 uvicorn app.main:app --reload --port 8001
+ML_API_URL=http://127.0.0.1:8000 uvicorn app.main:app --reload --port 8001
 ```
 
 ### Market API
 
 ```bash
 cd services/market-api
-ML_API_URL=http://localhost:8000 HOUSING_DATASET_PATH=../../data/housing.csv mvn spring-boot:run
+ML_API_URL=http://127.0.0.1:8000 HOUSING_DATASET_PATH=../../data/housing.csv mvn spring-boot:run
 ```
 
 ### Web Portal

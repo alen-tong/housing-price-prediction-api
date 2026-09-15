@@ -8,10 +8,10 @@ import type {
   WhatIfResponse,
 } from "./types";
 
-const estimatorBaseServer = process.env.ESTIMATOR_API_URL ?? "http://localhost:8001";
-const marketBaseServer = process.env.MARKET_API_URL ?? "http://localhost:8080";
-const estimatorBaseClient = process.env.NEXT_PUBLIC_ESTIMATOR_API_URL ?? "http://localhost:8001";
-const marketBaseClient = process.env.NEXT_PUBLIC_MARKET_API_URL ?? "http://localhost:8080";
+const estimatorBaseServer = process.env.ESTIMATOR_API_URL ?? "http://127.0.0.1:8001";
+const marketBaseServer = process.env.MARKET_API_URL ?? "http://127.0.0.1:8080";
+const estimatorBaseClient = process.env.NEXT_PUBLIC_ESTIMATOR_API_URL ?? "http://127.0.0.1:8001";
+const marketBaseClient = process.env.NEXT_PUBLIC_MARKET_API_URL ?? "http://127.0.0.1:8080";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
