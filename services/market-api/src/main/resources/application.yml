@@ -1,0 +1,14 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: market-api
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=10m
+
+app:
+  housing-dataset-path: ${HOUSING_DATASET_PATH:../../data/housing.csv}
+  ml-api-url: ${ML_API_URL:http://localhost:8000}

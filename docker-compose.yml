@@ -1,0 +1,56 @@
+services:
+  ml-api:
+    build:
+      context: ./services/ml-api
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  estimator-api:
+    build:
+      context: ./services/estimator-api
+    environment:
+      ML_API_URL: http://ml-api:8000
+      ESTIMATOR_DB_PATH: /app/data/estimates.sqlite3
+    ports:
+      - "8001:8001"
+    volumes:
+      - estimator-data:/app/data
+    depends_on:
+      ml-api:
+        condition: service_healthy
+
+  market-api:
+    build:
+      context: ./services/market-api
+    environment:
+      ML_API_URL: http://ml-api:8000
+      HOUSING_DATASET_PATH: /app/data/housing.csv
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data:ro
+    depends_on:
+      ml-api:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      NEXT_PUBLIC_ESTIMATOR_API_URL: http://localhost:8001
+      NEXT_PUBLIC_MARKET_API_URL: http://localhost:8080
+      ESTIMATOR_API_URL: http://estimator-api:8001
+      MARKET_API_URL: http://market-api:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - estimator-api
+      - market-api
+
+volumes:
+  estimator-data:

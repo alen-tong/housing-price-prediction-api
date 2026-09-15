@@ -7,6 +7,8 @@ from typing import Any
 import joblib
 import pandas as pd
 
+import time
+
 from app.config import FEATURE_COLUMNS, METRICS_PATH, MODEL_PATH
 from app.schemas import HousingFeatures
 
@@ -26,6 +28,7 @@ class ModelService:
         self.pipeline: Any | None = None
         self.metrics: dict[str, Any] | None = None
         self.load_error: str | None = None
+        self.start_time: float = time.time()
 
     @property
     def is_ready(self) -> bool:

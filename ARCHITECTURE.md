@@ -1,181 +1,157 @@
 # Architecture
 
-This project turns a housing price regression model into a small, deployable API service. The focus is not only model training, but also making the model easy to validate, serve, and demonstrate through a stable HTTP contract.
+## Overview
 
-## System Overview
+The system is a multi-application portal built around a reusable housing price ML service.
 
 ```text
-Excel Dataset
-    |
-    v
-data/housing.csv
-    |
-    v
-scripts/train.py
-    |
-    +--> models/model.joblib
-    |
-    +--> models/metrics.json
-              |
-              v
-FastAPI Application
-    |
-    +--> GET /health
-    +--> POST /predict
-    +--> GET /model-info
+Browser
+  |
+  v
+Next.js Portal
+  |
+  +--> Python Estimator API -----> ML Model API
+  |          |
+  |          +--> SQLite estimate history
+  |
+  +--> Java Market API ----------> ML Model API
+             |
+             +--> housing.csv analytics
+             +--> Caffeine cached aggregates
 ```
 
-## Main Components
+## Service Responsibilities
 
-### Dataset Layer
+### ML API
 
-The original assignment dataset was provided as an Excel file. It was converted into CSV files for repeatable training and demo usage:
+Path: `services/ml-api`
 
-- `data/housing.csv` contains labeled data with the `price` target column.
-- `data/prediction_examples.csv` contains feature-only examples for prediction demos.
+This is the Task 1 model service. It trains and serves a Ridge regression model through FastAPI.
 
-The model does not use the `id` column as a feature. The training features are:
+Endpoints:
 
-- `square_footage`
-- `bedrooms`
-- `bathrooms`
-- `year_built`
-- `lot_size`
-- `distance_to_city_center`
-- `school_rating`
+- `GET /health`
+- `POST /predict`
+- `GET /model-info`
 
-The prediction target is:
+Both downstream applications call this service for predictions.
 
-- `price`
+### Estimator API
 
-### Training Pipeline
+Path: `services/estimator-api`
 
-Training is handled by `scripts/train.py`.
+This Python backend supports the Property Value Estimator application.
 
-The pipeline:
+Responsibilities:
 
-1. Loads `data/housing.csv`.
-2. Validates that all required feature columns and the target column exist.
-3. Converts feature and target values to numeric values.
-4. Splits the data into train and test sets with a fixed random seed.
-5. Applies `StandardScaler` to numeric features.
-6. Trains a `Ridge` regression model.
-7. Saves the full Scikit-learn pipeline to `models/model.joblib`.
-8. Saves model metadata, coefficients, row counts, and metrics to `models/metrics.json`.
+- validate property estimate submissions
+- call the ML API for prediction
+- persist estimate history in SQLite
+- return records for history and comparison views
 
-The full preprocessing and model pipeline is persisted together, so inference uses the same feature transformation as training.
+Endpoints:
 
-## Inference Flow
+- `GET /health`
+- `POST /estimates`
+- `GET /estimates`
+- `GET /estimates/{id}`
 
-Prediction is exposed through `POST /predict`.
+### Market API
 
-The endpoint supports two request shapes.
+Path: `services/market-api`
 
-Single property:
+This Java 21 / Spring Boot backend supports the Property Market Analysis application.
 
-```json
-{
-  "square_footage": 1550,
-  "bedrooms": 3,
-  "bathrooms": 2,
-  "year_built": 1997,
-  "lot_size": 6800,
-  "distance_to_city_center": 4.1,
-  "school_rating": 7.6
-}
+Responsibilities:
+
+- load the housing CSV dataset
+- generate aggregate market statistics
+- group data into market segments
+- filter, sort, and page property records
+- call the ML API for what-if analysis
+- export filtered data as CSV
+- cache expensive aggregate and segment computations with Caffeine
+
+Endpoints:
+
+- `GET /health`
+- `GET /market/summary`
+- `GET /market/segments`
+- `GET /market/properties`
+- `POST /market/what-if`
+- `GET /market/export.csv`
+
+### Web Portal
+
+Path: `apps/web`
+
+The Next.js portal hosts both frontend applications.
+
+Routes:
+
+- `/` system overview
+- `/estimator` property value estimator
+- `/estimator/compare` side-by-side estimate comparison
+- `/market` property market analysis dashboard
+
+## Data Flow
+
+### Estimate Submission
+
+```text
+User submits property form
+  -> Next.js estimator page
+  -> Python Estimator API /estimates
+  -> ML API /predict
+  -> SQLite history
+  -> Next.js renders result, table, chart, and history
 ```
 
-Batch prediction:
+### Market Dashboard
 
-```json
-{
-  "items": [
-    {
-      "square_footage": 1550,
-      "bedrooms": 3,
-      "bathrooms": 2,
-      "year_built": 1997,
-      "lot_size": 6800,
-      "distance_to_city_center": 4.1,
-      "school_rating": 7.6
-    }
-  ]
-}
+```text
+Next.js market page
+  -> Java Market API /market/summary
+  -> Java loads housing.csv and computes aggregates
+  -> Caffeine caches summary and segment results
+  -> Next.js renders cards, chart, filters, and table
 ```
 
-Internally, both request shapes are normalized into a list of `HousingFeatures`. This keeps single and batch prediction on the same code path.
+### What-if Analysis
 
-## API Layer
+```text
+User submits hypothetical property
+  -> Next.js market dashboard
+  -> Java Market API /market/what-if
+  -> ML API /predict
+  -> Java wraps prediction as what-if result
+  -> Next.js renders predicted price
+```
 
-The FastAPI application is defined in `app/main.py`.
+## Frontend Architecture
 
-It exposes the assignment-required endpoints:
+The frontend uses Next.js App Router.
 
-- `GET /health` checks whether the API is running and the model artifact is loaded.
-- `POST /predict` returns one or more housing price predictions.
-- `GET /model-info` returns model type, feature names, coefficients, train/test metrics, row counts, and model version.
+- Server Components load initial data where useful, such as market summary and estimate history.
+- Client Components handle forms, filters, charts, sorting, local comparison selection, and export actions.
+- Shared UI components keep the two applications visually consistent.
+- Custom hooks encapsulate API communication and loading/error state.
 
-Input and output contracts are defined in `app/schemas.py` using Pydantic. Invalid payloads return structured validation errors before they reach the model.
+## Deployment
 
-## Model Service
+`docker-compose.yml` starts all four services:
 
-`app/model.py` contains the `ModelService`.
+- `ml-api` on port `8000`
+- `estimator-api` on port `8001`
+- `market-api` on port `8080`
+- `web` on port `3000`
 
-Its responsibilities are:
+Internal service communication uses Docker service names, while browser calls use localhost URLs exposed through `NEXT_PUBLIC_*` environment variables.
 
-- load `models/model.joblib`
-- load `models/metrics.json`
-- expose model readiness
-- convert validated API input into a Pandas DataFrame
-- call the Scikit-learn pipeline for prediction
-- return rounded prediction values
+## Design Trade-offs
 
-This separates API routing from model-loading and prediction logic.
-
-## Model Info and Coefficients
-
-The `/model-info` endpoint returns coefficients aligned with transformed feature names.
-
-Because the model uses `StandardScaler`, coefficients are reported on standardized numeric features. That means each coefficient represents the price impact of a one-standard-deviation change in that feature, not a one-unit raw change.
-
-The service records both training and test metrics:
-
-- MAE
-- RMSE
-- R2
-
-The test metrics are the main performance reference for discussion.
-
-## Docker Deployment
-
-The Dockerfile uses `python:3.12-slim`, which matches the assignment requirement.
-
-The image build process:
-
-1. Installs pinned dependencies from `requirements.txt`.
-2. Copies the app, training script, and data files.
-3. Runs `python scripts/train.py` during image build.
-4. Starts Uvicorn and serves the FastAPI app on port `8000`.
-
-The model is trained during image build, so the first API request does not pay a training cost.
-
-## Error Handling
-
-The service handles common failure cases:
-
-- Missing or invalid request fields return FastAPI/Pydantic validation errors.
-- Empty batch requests return HTTP `400`.
-- Missing or unloadable model artifacts return HTTP `503` for prediction and model-info requests.
-- `/health` exposes degraded model-loading state instead of hiding startup issues.
-
-## Demo Path
-
-For interviews, the intended demo flow is:
-
-1. Open `http://localhost:8000/docs`.
-2. Call `GET /health` to show the service and model are ready.
-3. Call `GET /model-info` to show features, coefficients, and performance metrics.
-4. Call `POST /predict` with a single property.
-5. Call `POST /predict` with a batch payload.
-
-This shows the full path from trained model artifact to validated API prediction.
+- SQLite is used for estimator history to keep the demo self-contained.
+- CSV loading is used for market analytics because the assignment dataset is static and small.
+- Caffeine caching is used where the assignment explicitly asks for performance optimization.
+- Print-to-PDF is used for PDF export to avoid a heavy reporting dependency.
+- The ML API remains independent so both backends consume the same model contract.

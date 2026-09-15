@@ -1,160 +1,104 @@
-# Housing Price Prediction API
+# Housing Fullstack Assignment
 
-A compact FastAPI service that trains a Scikit-learn regression model and serves housing price predictions through Swagger/OpenAPI.
+This repository completes the multi-application portal assignment. It contains a unified Next.js portal, a reusable ML model API, a Python estimator backend, and a Java Spring Boot market analysis backend.
 
-## What It Shows
+## Services
 
-- Reproducible model training from the provided housing dataset.
-- A Dockerized FastAPI API with `health`, `predict`, and `model-info` endpoints.
-- Single-property and batch predictions through the same `/predict` endpoint.
-- Model metrics and coefficients exposed for interview discussion.
+| Service | Path | Port | Purpose |
+| --- | --- | --- | --- |
+| ML API | `services/ml-api` | `8000` | Task 1 FastAPI/scikit-learn model service |
+| Estimator API | `services/estimator-api` | `8001` | Python backend for property estimate submissions and history |
+| Market API | `services/market-api` | `8080` | Java backend for market analytics, caching, what-if, and CSV export |
+| Web Portal | `apps/web` | `3000` | Next.js App Router portal |
 
-For the system design and data flow, see [ARCHITECTURE.md](ARCHITECTURE.md).
-
-## Dataset
-
-The original Excel assignment file contains two sheets:
-
-- `Test Data For Prediction` -> converted to `data/housing.csv` and used for training/evaluation because it contains `price`.
-- `House Price Dataset` -> converted to `data/prediction_examples.csv` and used as demo inputs because it contains features without `price`.
-
-Training features:
-
-- `square_footage`
-- `bedrooms`
-- `bathrooms`
-- `year_built`
-- `lot_size`
-- `distance_to_city_center`
-- `school_rating`
-
-Target:
-
-- `price`
-
-## Local Setup
+## Quick Start With Docker Compose
 
 ```bash
+docker compose up --build
+```
+
+Open:
+
+- Web portal: `http://localhost:3000`
+- ML Swagger: `http://localhost:8000/docs`
+- Estimator Swagger: `http://localhost:8001/docs`
+- Market API health: `http://localhost:8080/health`
+
+## Local Development
+
+### ML API
+
+```bash
+cd services/ml-api
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 MKL_NUM_THREADS=1 python scripts/train.py
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 MKL_NUM_THREADS=1 uvicorn app.main:app --reload
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 MKL_NUM_THREADS=1 uvicorn app.main:app --reload --port 8000
 ```
 
-Open the interactive API docs:
-
-```text
-http://localhost:8000/docs
-```
-
-## Docker Demo
+### Estimator API
 
 ```bash
-docker build -t housing-price-api .
-docker run --rm -p 8000:8000 housing-price-api
+cd services/estimator-api
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+ML_API_URL=http://localhost:8000 uvicorn app.main:app --reload --port 8001
 ```
 
-Then open:
+### Market API
 
-```text
-http://localhost:8000/docs
+```bash
+cd services/market-api
+ML_API_URL=http://localhost:8000 HOUSING_DATASET_PATH=../../data/housing.csv mvn spring-boot:run
 ```
 
-The Docker build runs `python scripts/train.py`, so the container starts with a ready model artifact instead of training on the first request.
+### Web Portal
 
-## API Endpoints
-
-### GET `/health`
-
-Returns service status and whether the model artifact was loaded.
-
-### POST `/predict`
-
-Single-property request:
-
-```json
-{
-  "square_footage": 1550,
-  "bedrooms": 3,
-  "bathrooms": 2,
-  "year_built": 1997,
-  "lot_size": 6800,
-  "distance_to_city_center": 4.1,
-  "school_rating": 7.6
-}
+```bash
+cd apps/web
+npm install
+npm run dev
 ```
 
-Batch request:
+## Assignment Coverage
 
-```json
-{
-  "items": [
-    {
-      "square_footage": 1550,
-      "bedrooms": 3,
-      "bathrooms": 2,
-      "year_built": 1997,
-      "lot_size": 6800,
-      "distance_to_city_center": 4.1,
-      "school_rating": 7.6
-    },
-    {
-      "square_footage": 2200,
-      "bedrooms": 4,
-      "bathrooms": 2.5,
-      "year_built": 2008,
-      "lot_size": 9600,
-      "distance_to_city_center": 7,
-      "school_rating": 8.8
-    }
-  ]
-}
-```
+### Unified Navigation and Layout
 
-Response:
+- Next.js App Router routes: `/`, `/estimator`, `/estimator/compare`, `/market`.
+- Shared navigation and layout in `apps/web/app/layout.tsx`.
+- Shared UI primitives under `apps/web/components/ui`.
+- `loading.tsx` and `error.tsx` provide layout-level loading and error states.
 
-```json
-{
-  "predictions": [245100.32, 385922.14],
-  "count": 2,
-  "model_version": "2026-09-08T10:15:00Z"
-}
-```
+### App 1: Property Value Estimator
 
-### GET `/model-info`
+- Frontend form covers all model fields.
+- Client-side validation is implemented with Zod in `hooks/useEstimator.ts`.
+- Results are shown as a summary card, feature table, and chart.
+- Estimate history is stored by the Python backend in SQLite.
+- `/estimator/compare` provides side-by-side comparison.
 
-Returns:
+### App 2: Property Market Analysis
 
-- model type
-- original feature columns
-- transformed feature names
-- coefficients aligned to transformed features
-- coefficient scale
-- train/test metrics
-- row counts
-- training timestamp
+- Java Spring Boot backend exposes market summary, segments, property table, what-if, and CSV export.
+- Caffeine caching is enabled for summary and segment statistics.
+- Dashboard includes aggregate cards, segment chart, filters, responsive table, what-if tool, CSV export, and print-to-PDF export.
 
-The coefficients are reported on standardized numeric features, so each coefficient represents price change per one standard deviation of that feature.
+## Demo Script
+
+1. Open `http://localhost:3000`.
+2. Show unified navigation between both applications.
+3. Open the ML Swagger at `http://localhost:8000/docs` and show `/health`, `/predict`, and `/model-info`.
+4. Go to `/estimator`, submit a property estimate, show the prediction card, chart, and history.
+5. Select history rows and open `/estimator/compare`.
+6. Go to `/market`, show summary cards, segment filter, table sorting/filtering, CSV export, PDF export, and what-if analysis.
 
 ## Tests
 
 ```bash
-pytest
+cd services/ml-api && pytest
+cd services/estimator-api && pytest
+cd services/market-api && mvn test
+cd apps/web && npm run typecheck && npm run build
 ```
-
-If local scientific Python imports are slow on macOS, run tests with single-threaded numerical libraries:
-
-```bash
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 MKL_NUM_THREADS=1 pytest
-```
-
-The tests cover:
-
-- health check
-- model info
-- coefficient alignment
-- single prediction
-- batch prediction
-- empty batch validation
-- missing-field validation

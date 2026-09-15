@@ -4,6 +4,8 @@ from typing import Annotated, Union
 
 from fastapi import Body, FastAPI, HTTPException, status
 
+import time
+
 from app.config import APP_NAME, APP_VERSION
 from app.model import ModelNotReadyError, ModelService
 from app.schemas import (
@@ -76,6 +78,7 @@ def health() -> HealthResponse:
         model_loaded=model_service.is_ready,
         version=APP_VERSION,
         error=model_service.load_error,
+        running_time=time.time() - model_service.start_time,
     )
 
 

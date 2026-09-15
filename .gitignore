@@ -1,3 +1,7 @@
+.DS_Store
+.env
+.env.*
+!.env.example
 __pycache__/
 .pytest_cache/
 .ruff_cache/
@@ -5,6 +9,13 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.DS_Store
-htmlcov/
-.coverage
+node_modules/
+.next/
+out/
+target/
+*.db
+*.sqlite
+*.sqlite3
+dist/
+build/
+tsconfig.tsbuildinfo

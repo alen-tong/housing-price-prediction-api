@@ -71,6 +71,7 @@ class HealthResponse(BaseModel):
     model_loaded: bool
     version: str
     error: str | None = None
+    running_time: float
 
 
 class PredictionResponse(BaseModel):
